@@ -2,13 +2,13 @@ trigger:
 - main
 
 variables:
-  # 1. Using the ID you found
-  azureServiceConnectionId: '627504fe-7ee2-4d95-a357-8776438960f2'
+  # 1. The name of the Service Connection you just created
+  azureServiceConnectionId: 'Azure-Conn'
   
   # 2. Your exact Function App name
   functionAppName: 'sc-ticket-backend'
   
-  # 3. The agent VM image name
+  # 3. Agent VM image
   vmImageName: 'ubuntu-latest'
   
   # 4. Working Directory (Root)
