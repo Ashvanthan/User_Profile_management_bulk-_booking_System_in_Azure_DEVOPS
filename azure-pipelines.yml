@@ -1,0 +1,70 @@
+trigger:
+- main
+
+variables:
+  # 1. Using the ID you found
+  azureServiceConnectionId: '627504fe-7ee2-4d95-a357-8776438960f2'
+  
+  # 2. Your exact Function App name
+  functionAppName: 'sc-ticket-backend'
+  
+  # 3. The agent VM image name
+  vmImageName: 'ubuntu-latest'
+  
+  # 4. Working Directory (Root)
+  workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.10'
+      displayName: 'Use Python 3.10'
+
+    - script: |
+        python -m venv worker_venv
+        source worker_venv/bin/activate
+        pip install -r requirements.txt
+      workingDirectory: $(workingDirectory)
+      displayName: 'Install dependencies'
+
+    - task: ArchiveFiles@2
+      displayName: 'Archive files'
+      inputs:
+        rootFolderOrFile: $(workingDirectory)
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+        ArtifactName: 'drop'
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: Deploy
+    pool:
+      vmImage: $(vmImageName)
+    environment: 'development'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Azure Functions Deploy'
+            inputs:
+              azureSubscription: $(azureServiceConnectionId)
+              appType: functionAppLinux
+              appName: $(functionAppName)
+              package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
