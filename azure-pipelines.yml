@@ -1,15 +1,12 @@
 trigger:
 - main
 
-# ✅ Use your self-hosted agent
 pool:
-  name: Default
+  name: Default   # ✅ self-hosted agent
 
 variables:
-  azureServiceConnectionId: 'Azure-Conn'   # make sure this is correct
+  azureServiceConnectionId: 'Azure-Conn'
   functionAppName: 'sc-ticket-backend'
-
-  # ✅ IMPORTANT: correct folder path from your repo
   workingDirectory: '$(System.DefaultWorkingDirectory)/ticket-booking-project/backend'
 
 steps:
@@ -34,7 +31,8 @@ steps:
     archiveFile: '$(Build.ArtifactStagingDirectory)/functionapp.zip'
     replaceExistingArchive: true
 
-- task: AzureFunctionApp@1
+# ✅ Better deployment task
+- task: AzureFunctionApp@2
   displayName: 'Deploy to Azure Function'
   inputs:
     azureSubscription: '$(azureServiceConnectionId)'
