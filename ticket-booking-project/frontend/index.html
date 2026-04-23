@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TicketBook — Cloud-Based Ticket Booking System</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; background: radial-gradient(ellipse at 50% 0%, rgba(233,69,96,0.12) 0%, transparent 70%); }
+    .hero-title { font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+    .hero-title span { color: var(--accent); }
+    .hero-sub { font-size: 1rem; color: var(--text2); max-width: 520px; margin-bottom: 2.5rem; line-height: 1.7; }
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .hero-btn { padding: 13px 30px; border-radius: 8px; font-size: 0.95rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+    .hero-btn-primary { background: var(--accent); color: #fff; }
+    .hero-btn-primary:hover { background: #c73550; transform: translateY(-2px); text-decoration: none; }
+    .hero-btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .hero-btn-secondary:hover { border-color: var(--text2); text-decoration: none; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; max-width: 900px; width: 100%; margin-top: 4rem; }
+    .feature-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; text-align: left; }
+    .feature-icon { font-size: 1.8rem; margin-bottom: 0.8rem; }
+    .feature-title { font-weight: 700; margin-bottom: 5px; font-size: 0.95rem; }
+    .feature-desc { font-size: 0.82rem; color: var(--text2); line-height: 1.6; }
+    .tech-strip { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; margin-top: 3rem; }
+    .tech-pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 16px; font-size: 0.78rem; color: var(--text2); }
+  </style>
+</head>
+<body>
+<div class="hero">
+  <div style="font-size:3rem;margin-bottom:1rem">🎟</div>
+  <h1 class="hero-title">Book Tickets.<br><span>Anywhere. Anytime.</span></h1>
+  <p class="hero-sub">A cloud-based ticket booking system with role-based access, bulk booking, OTP verification, and email confirmations — built on Azure serverless architecture.</p>
+  <div class="hero-btns">
+    <a href="register.html" class="hero-btn hero-btn-primary">🚀 Get Started Free</a>
+    <a href="login.html" class="hero-btn hero-btn-secondary">Login →</a>
+  </div>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🎬</div>
+      <div class="feature-title">Browse Movies</div>
+      <div class="feature-desc">View movies by theater and city. Real-time seat availability updated after every booking.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📋</div>
+      <div class="feature-title">Bulk Booking</div>
+      <div class="feature-desc">Upload a JSON list of users and book tickets for everyone in a single API call. Built for scale.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📧</div>
+      <div class="feature-title">Email Confirmations</div>
+      <div class="feature-desc">OTP verification on signup. Instant ticket confirmation email after every booking via SendGrid.</div>
+    </div>
+  </div>
+
+  <div class="tech-strip">
+    <span class="tech-pill">Azure Functions (Python)</span>
+    <span class="tech-pill">Cosmos DB Serverless</span>
+    <span class="tech-pill">Netlify Frontend</span>
+    <span class="tech-pill">SendGrid Email</span>
+    <span class="tech-pill">JWT Auth</span>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  // Auto-redirect if already logged in
+  if (Auth.isLoggedIn()) window.location.href = "dashboard.html";
+</script>
+</body>
+</html>

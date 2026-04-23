@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Tickets — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: flex-end; }
+    .filter-bar .form-group { flex: 1; min-width: 140px; margin: 0; }
+    .cost-box { background: rgba(233,69,96,0.08); border: 1px solid rgba(233,69,96,0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 1rem; font-size: 0.9rem; }
+    .bulk-preview { margin-top: 1rem; }
+    .bulk-row { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .bulk-row:last-child { border: none; }
+    .movie-badge { display: inline-block; font-size: 0.7rem; padding: 2px 7px; background: var(--accent2); color: #a0c0ff; border-radius: 4px; }
+    .timing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; margin-top: 8px; }
+    .timing-btn { padding: 7px; text-align: center; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; }
+    .timing-btn.selected { border-color: var(--accent); background: rgba(233,69,96,0.1); color: var(--accent); }
+    .timing-btn:hover { border-color: var(--accent); }
+    .seats-info { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+    .seats-low { color: var(--warning); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">🎟 TicketBook</div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div id="navLinks" class="nav-links"></div>
+    <span id="navUser" class="nav-user"></span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-title">Browse Movies</div>
+  <p class="page-sub">Select a movie and book your tickets</p>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="form-group">
+      <label>Filter by Theater</label>
+      <select id="filterTheater" onchange="loadMovies()">
+        <option value="">All Theaters</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Search</label>
+      <input type="text" id="searchInput" placeholder="Movie title..." oninput="filterMovies()">
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('browse')">🎬 Browse Movies</button>
+    <button class="tab" onclick="switchTab('bulk')">📋 Bulk Booking</button>
+  </div>
+
+  <!-- BROWSE TAB -->
+  <div class="tab-panel active" id="panelBrowse">
+    <div id="moviesGrid" class="grid-3">
+      <div class="empty-state">Loading movies...</div>
+    </div>
+  </div>
+
+  <!-- BULK BOOKING TAB -->
+  <div class="tab-panel" id="panelBulk">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Bulk Booking Setup</div>
+        <div id="bulkAlert" class="alert"></div>
+        <div class="form-group">
+          <label>Movie</label>
+          <select id="bulkMovie" onchange="updateBulkMovieInfo()">
+            <option value="">Select Movie...</option>
+          </select>
+        </div>
+        <div id="bulkMovieInfo" style="display:none">
+          <div class="form-group">
+            <label>Show Date</label>
+            <input type="date" id="bulkDate">
+          </div>
+          <div class="form-group">
+            <label>Show Timing</label>
+            <div class="timing-grid" id="bulkTimings"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Upload User List (JSON)</label>
+          <textarea id="bulkJson" placeholder='[
+  {"userName":"Priya N","userEmail":"priya@gmail.com","ticketCount":2},
+  {"userName":"Rahul M","userEmail":"rahul@gmail.com","ticketCount":1}
+]' style="min-height:140px;font-size:0.78rem"></textarea>
+          <p style="font-size:0.75rem;color:var(--text2);margin-top:4px">Each entry needs: userName, userEmail, ticketCount</p>
+        </div>
+        <div id="bulkPreview" class="bulk-preview"></div>
+        <button class="btn btn-secondary btn-full mb-1" onclick="parseBulkJson()">Preview</button>
+        <button class="btn btn-primary btn-full" id="btnBulkBook" data-label="Process Bulk Booking" onclick="doBulkBooking()">Process Bulk Booking</button>
+      </div>
+      <div class="card">
+        <div class="card-title">How Bulk Booking Works</div>
+        <div style="font-size:0.85rem;color:var(--text2);line-height:1.9">
+          <p>1. Select a movie and show timing</p>
+          <p>2. Paste or type your user list in JSON format</p>
+          <p>3. Preview to validate the list</p>
+          <p>4. Click <strong style="color:var(--text)">Process</strong> — one API call books all tickets simultaneously</p>
+          <p>5. Each user receives an email confirmation</p>
+          <br>
+          <p style="color:var(--accent)">All N bookings processed in a single backend operation — zero sequential calls.</p>
+        </div>
+        <div class="divider"></div>
+        <div id="bulkResult"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="modal-overlay" id="bookingModal">
+  <div class="modal">
+    <div class="modal-title">Book Tickets <button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div id="bookingAlert" class="alert"></div>
+
+    <div id="movieSummary" style="margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)"></div>
+
+    <div class="form-group">
+      <label>Select Timing</label>
+      <div class="timing-grid" id="modalTimings"></div>
+    </div>
+    <div class="form-group">
+      <label>Show Date</label>
+      <input type="date" id="modalDate">
+    </div>
+    <div class="form-group">
+      <label>Number of Tickets</label>
+      <input type="number" id="ticketCount" min="1" max="10" value="1" oninput="updateCost()">
+    </div>
+    <div class="cost-box" id="costDisplay">Select tickets to see price</div>
+    <button class="btn btn-primary btn-full" id="btnBook" data-label="Confirm Booking" onclick="doBooking()">Confirm Booking</button>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!Auth.requireLogin()) throw new Error("redirect");
+  UI.renderNav("booking");
+
+  let allMovies = [];
+  let selectedMovie = null;
+  let selectedTiming = "";
+  let bulkMovieData = null;
+  let bulkSelectedTiming = "";
+  let parsedBulkUsers = [];
+
+  // Handle #bulk anchor
+  if (location.hash === "#bulk") {
+    document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", i===1));
+    document.querySelectorAll(".tab-panel").forEach((p,i) => p.classList.toggle("active", i===1));
+  }
+
+  async function init() {
+    await Promise.all([loadTheaters(), loadMovies()]);
+  }
+
+  async function loadTheaters() {
+    try {
+      const data = await API.getTheaters();
+      const sel = document.getElementById("filterTheater");
+      data.theaters.forEach(t => {
+        const o = document.createElement("option");
+        o.value = t.id; o.textContent = `${t.name} — ${t.city}`;
+        sel.appendChild(o);
+      });
+    } catch {}
+  }
+
+  async function loadMovies() {
+    const tid = document.getElementById("filterTheater").value;
+    document.getElementById("moviesGrid").innerHTML = `<div class="empty-state"><span class="spinner"></span> Loading...</div>`;
+    try {
+      const data = await API.getMovies(tid);
+      allMovies = data.movies;
+      populateBulkMovies();
+      filterMovies();
+    } catch (err) {
+      document.getElementById("moviesGrid").innerHTML = `<div class="empty-state">${err.message}</div>`;
+    }
+  }
+
+  function filterMovies() {
+    const q = document.getElementById("searchInput").value.toLowerCase();
+    const filtered = allMovies.filter(m => m.title.toLowerCase().includes(q));
+    renderMovies(filtered);
+  }
+
+  function renderMovies(movies) {
+    const grid = document.getElementById("moviesGrid");
+    if (!movies.length) { grid.innerHTML = `<div class="empty-state">No movies found.</div>`; return; }
+    grid.innerHTML = movies.map(m => `
+      <div class="movie-card" onclick="openBookingModal('${m.id}')">
+        <div class="movie-poster">🎬</div>
+        <div class="movie-info">
+          <div class="movie-title">${m.title}</div>
+          <div class="movie-meta">
+            <span>🗣 ${m.language || "—"}</span>
+            <span>⏱ ${m.durationMins || "—"} min</span>
+            <span>${m.genre?.join(", ") || ""}</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:6px">📍 ${m.theaterName || "—"}</div>
+          <div class="flex flex-between flex-center">
+            <div class="movie-price">${UI.rupee(m.price)}</div>
+            <div class="seats-info ${m.availableSeats < 20 ? 'seats-low' : ''}">${m.availableSeats} seats</div>
+          </div>
+        </div>
+      </div>`).join("");
+  }
+
+  function openBookingModal(movieId) {
+    selectedMovie = allMovies.find(m => m.id === movieId);
+    if (!selectedMovie) return;
+    selectedTiming = "";
+
+    document.getElementById("movieSummary").innerHTML = `
+      <div style="font-weight:700;font-size:1rem">${selectedMovie.title}</div>
+      <div style="color:var(--text2);font-size:0.82rem;margin-top:4px">${selectedMovie.theaterName} · ${selectedMovie.language} · ${selectedMovie.durationMins} min</div>
+      <div style="color:var(--accent);font-weight:700;margin-top:6px">${UI.rupee(selectedMovie.price)} per ticket</div>
+      <div class="seats-info ${selectedMovie.availableSeats < 20 ? 'seats-low' : ''}" style="margin-top:4px">${selectedMovie.availableSeats} seats available</div>`;
+
+    const timings = selectedMovie.showTimings || [];
+    document.getElementById("modalTimings").innerHTML = timings.map(t =>
+      `<div class="timing-btn" onclick="selectTiming('${t}', this)">${t}</div>`).join("");
+
+    document.getElementById("modalDate").value = selectedMovie.showDate || "";
+    document.getElementById("ticketCount").value = 1;
+    document.getElementById("bookingAlert").classList.remove("show");
+    updateCost();
+    document.getElementById("bookingModal").classList.add("open");
+  }
+
+  function selectTiming(t, el) {
+    selectedTiming = t;
+    document.querySelectorAll("#modalTimings .timing-btn").forEach(b => b.classList.remove("selected"));
+    el.classList.add("selected");
+    updateCost();
+  }
+
+  function updateCost() {
+    if (!selectedMovie) return;
+    const count = parseInt(document.getElementById("ticketCount").value) || 1;
+    const { base, convenience, total } = Cost.calculate(selectedMovie.price, count);
+    document.getElementById("costDisplay").innerHTML =
+      `Base: ${UI.rupee(base)} + Convenience: ${UI.rupee(convenience)} = <strong style="color:var(--accent)">${UI.rupee(total)}</strong>`;
+  }
+
+  async function doBooking() {
+    UI.hideAlert("bookingAlert");
+    const count = parseInt(document.getElementById("ticketCount").value) || 1;
+    const date  = document.getElementById("modalDate").value;
+    if (!selectedTiming) return UI.showAlert("bookingAlert", "Please select a show timing");
+    if (!date) return UI.showAlert("bookingAlert", "Please select a show date");
+    if (count < 1 || count > 10) return UI.showAlert("bookingAlert", "Tickets must be between 1 and 10");
+
+    const { total } = Cost.calculate(selectedMovie.price, count);
+
+    UI.setLoading("btnBook", true);
+    try {
+      const data = await API.bookTicket({
+        movieId: selectedMovie.id,
+        theaterId: selectedMovie.theaterId,
+        showTiming: selectedTiming,
+        showDate: date,
+        ticketCount: count,
+        pricePerTicket: selectedMovie.price,
+        totalCost: total,
+        userName: Auth.user().name
+      });
+      UI.showAlert("bookingAlert", `Booking confirmed! ID: ${data.bookingId}. Check your email.`, "success");
+      selectedMovie.availableSeats -= count;
+      setTimeout(() => closeModal(), 3000);
+    } catch (err) {
+      UI.showAlert("bookingAlert", err.message);
+    } finally {
+      UI.setLoading("btnBook", false);
+    }
+  }
+
+  // ── BULK BOOKING ─────────────────────────────────────────
+  function populateBulkMovies() {
+    const sel = document.getElementById("bulkMovie");
+    sel.innerHTML = `<option value="">Select Movie...</option>`;
+    allMovies.forEach(m => {
+      const o = document.createElement("option");
+      o.value = m.id; o.textContent = `${m.title} — ${m.theaterName}`;
+      sel.appendChild(o);
+    });
+  }
+
+  function updateBulkMovieInfo() {
+    const mid = document.getElementById("bulkMovie").value;
+    bulkMovieData = allMovies.find(m => m.id === mid) || null;
+    const info = document.getElementById("bulkMovieInfo");
+    if (!bulkMovieData) { info.style.display = "none"; return; }
+    info.style.display = "block";
+    document.getElementById("bulkDate").value = bulkMovieData.showDate || "";
+    bulkSelectedTiming = "";
+    document.getElementById("bulkTimings").innerHTML = (bulkMovieData.showTimings || []).map(t =>
+      `<div class="timing-btn" onclick="selectBulkTiming('${t}', this)">${t}</div>`).join("");
+  }
+
+  function selectBulkTiming(t, el) {
+    bulkSelectedTiming = t;
+    document.querySelectorAll("#bulkTimings .timing-btn").forEach(b => b.classList.remove("selected"));
+    el.classList.add("selected");
+  }
+
+  function parseBulkJson() {
+    UI.hideAlert("bulkAlert");
+    try {
+      const raw = document.getElementById("bulkJson").value.trim();
+      parsedBulkUsers = JSON.parse(raw);
+      if (!Array.isArray(parsedBulkUsers)) throw new Error("Must be a JSON array");
+      const errors = parsedBulkUsers.map((u,i) => {
+        if (!u.userName) return `Row ${i+1}: missing userName`;
+        if (!u.userEmail) return `Row ${i+1}: missing userEmail`;
+        if (!u.ticketCount || u.ticketCount < 1) return `Row ${i+1}: invalid ticketCount`;
+        return null;
+      }).filter(Boolean);
+      if (errors.length) return UI.showAlert("bulkAlert", errors.join(" | "));
+      const totalTickets = parsedBulkUsers.reduce((s,u) => s+u.ticketCount, 0);
+      const totalCost = bulkMovieData ? Cost.calculate(bulkMovieData.price, totalTickets).total : "?";
+      document.getElementById("bulkPreview").innerHTML = `
+        <div style="font-size:0.82rem;color:var(--text2);margin-bottom:8px">${parsedBulkUsers.length} users · ${totalTickets} total tickets${bulkMovieData ? ` · Est. ${UI.rupee(totalCost)}` : ''}</div>
+        ${parsedBulkUsers.map((u,i) => `
+          <div class="bulk-row">
+            <span style="width:20px;color:var(--text2)">${i+1}</span>
+            <span style="flex:1">${u.userName}</span>
+            <span style="flex:1;color:var(--text2)">${u.userEmail}</span>
+            <span class="badge-role badge-user">${u.ticketCount} tickets</span>
+          </div>`).join("")}`;
+    } catch (err) {
+      UI.showAlert("bulkAlert", "Invalid JSON: " + err.message);
+    }
+  }
+
+  async function doBulkBooking() {
+    UI.hideAlert("bulkAlert");
+    if (!bulkMovieData) return UI.showAlert("bulkAlert", "Please select a movie");
+    if (!bulkSelectedTiming) return UI.showAlert("bulkAlert", "Please select a show timing");
+    if (!parsedBulkUsers.length) return UI.showAlert("bulkAlert", "Preview the user list first");
+
+    // Add userId from current user for each entry (or keep their own)
+    const users = parsedBulkUsers.map(u => ({
+      userId: u.userId || Auth.user().id,
+      userEmail: u.userEmail,
+      userName: u.userName,
+      ticketCount: u.ticketCount
+    }));
+
+    UI.setLoading("btnBulkBook", true);
+    try {
+      const data = await API.bulkBooking({
+        movieId: bulkMovieData.id,
+        theaterId: bulkMovieData.theaterId,
+        showTiming: bulkSelectedTiming,
+        showDate: document.getElementById("bulkDate").value,
+        users
+      });
+      document.getElementById("bulkResult").innerHTML = `
+        <div class="alert alert-success show">
+          ${data.message}<br>
+          Batch ID: <code>${data.batchId}</code><br>
+          ${data.failed?.length ? `<small style="color:var(--warning)">${data.failed.length} failed</small>` : ''}
+        </div>`;
+      parsedBulkUsers = [];
+      document.getElementById("bulkPreview").innerHTML = "";
+    } catch (err) {
+      UI.showAlert("bulkAlert", err.message);
+    } finally {
+      UI.setLoading("btnBulkBook", false);
+    }
+  }
+
+  function switchTab(t) {
+    const tabs = document.querySelectorAll(".tab");
+    const panels = document.querySelectorAll(".tab-panel");
+    const idx = t === "browse" ? 0 : 1;
+    tabs.forEach((tab, i) => tab.classList.toggle("active", i === idx));
+    panels.forEach((p, i) => p.classList.toggle("active", i === idx));
+  }
+
+  function closeModal() {
+    document.getElementById("bookingModal").classList.remove("open");
+    selectedMovie = null; selectedTiming = "";
+  }
+
+  init();
+</script>
+</body>
+</html>

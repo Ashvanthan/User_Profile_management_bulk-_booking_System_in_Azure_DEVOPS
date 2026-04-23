@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .welcome-banner { background: linear-gradient(135deg, var(--accent2) 0%, #1a1a3e 100%); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .welcome-name { font-size: 1.4rem; font-weight: 700; }
+    .welcome-sub { color: var(--text2); font-size: 0.85rem; margin-top: 4px; }
+    .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .quick-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; cursor: pointer; transition: all 0.2s; text-decoration: none; display: block; }
+    .quick-card:hover { border-color: var(--accent); transform: translateY(-2px); text-decoration: none; }
+    .quick-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .quick-label { font-size: 0.82rem; color: var(--text2); font-weight: 600; }
+    .profile-card { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .profile-field { }
+    .profile-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .profile-val { font-size: 0.9rem; color: var(--text); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">🎟 TicketBook</div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div id="navLinks" class="nav-links"></div>
+    <span id="navUser" class="nav-user"></span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Welcome banner -->
+  <div class="welcome-banner">
+    <div>
+      <div class="welcome-name" id="welcomeName">Welcome back!</div>
+      <div class="welcome-sub" id="welcomeSub"></div>
+    </div>
+    <span class="badge-role" id="welcomeBadge"></span>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="stats-strip" id="statsStrip"></div>
+
+  <!-- Quick actions -->
+  <div class="quick-actions" id="quickActions"></div>
+
+  <!-- Role-based section -->
+  <div id="roleSection"></div>
+
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-title">Edit Profile <button class="modal-close" onclick="closeModal('profileModal')">✕</button></div>
+    <div id="profileAlert" class="alert"></div>
+    <div class="form-group"><label>Full Name</label><input type="text" id="editName"></div>
+    <div class="form-group"><label>Phone</label><input type="text" id="editPhone" placeholder="+91 XXXXX XXXXX"></div>
+    <div style="display:flex;gap:10px;margin-top:1rem">
+      <button class="btn btn-primary" style="flex:1" id="btnSaveProfile" data-label="Save Changes" onclick="saveProfile()">Save Changes</button>
+      <button class="btn btn-secondary" onclick="closeModal('profileModal')">Cancel</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-danger btn-full" onclick="confirmDeactivate()">Deactivate My Account</button>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!Auth.requireLogin()) throw new Error("redirect");
+
+  const user = Auth.user();
+  UI.renderNav("dashboard");
+
+  document.getElementById("welcomeName").textContent = `Welcome, ${user.name}!`;
+  document.getElementById("welcomeSub").textContent = `Logged in as ${user.email}`;
+  document.getElementById("welcomeBadge").className = `badge-role badge-${user.role}`;
+  document.getElementById("welcomeBadge").textContent = user.role;
+
+  async function init() {
+    renderQuickActions();
+    await Promise.all([loadStats(), loadRoleSection()]);
+  }
+
+  function renderQuickActions() {
+    const actions = {
+      user: [
+        { icon: "🎬", label: "Browse Movies", href: "booking.html" },
+        { icon: "🎟", label: "My Bookings", onclick: "scrollTo('bookingsSection')" },
+        { icon: "👤", label: "Edit Profile", onclick: "openProfileModal()" },
+        { icon: "📋", label: "Bulk Book", href: "booking.html#bulk" }
+      ],
+      admin: [
+        { icon: "➕", label: "Add Movie", href: "admin.html#addMovie" },
+        { icon: "🏢", label: "Add Theater", href: "admin.html#addTheater" },
+        { icon: "📊", label: "Manage", href: "admin.html" },
+        { icon: "👤", label: "Edit Profile", onclick: "openProfileModal()" }
+      ],
+      superadmin: [
+        { icon: "✅", label: "Approve Admins", href: "admin.html#approve" },
+        { icon: "🚩", label: "Flag Theater", href: "admin.html#theaters" },
+        { icon: "📊", label: "All Bookings", href: "admin.html#bookings" },
+        { icon: "👥", label: "All Users", href: "admin.html#users" }
+      ]
+    };
+    const list = actions[user.role] || actions.user;
+    document.getElementById("quickActions").innerHTML = list.map(a => {
+      const attr = a.href ? `href="${a.href}"` : `href="#" onclick="${a.onclick}"`;
+      return `<a class="quick-card" ${attr}><div class="quick-icon">${a.icon}</div><div class="quick-label">${a.label}</div></a>`;
+    }).join("");
+  }
+
+  async function loadStats() {
+    const strip = document.getElementById("statsStrip");
+    try {
+      if (user.role === "user") {
+        const data = await API.getMyBookings();
+        const total = data.bookings.length;
+        const confirmed = data.bookings.filter(b => b.status === "confirmed").length;
+        const spent = data.bookings.reduce((s, b) => s + (b.totalCost || 0), 0);
+        strip.innerHTML = `
+          <div class="stat-card"><div class="stat-val">${total}</div><div class="stat-label">Total Bookings</div></div>
+          <div class="stat-card"><div class="stat-val">${confirmed}</div><div class="stat-label">Confirmed</div></div>
+          <div class="stat-card"><div class="stat-val">${UI.rupee(spent)}</div><div class="stat-label">Total Spent</div></div>`;
+      } else {
+        const [bData, uData] = await Promise.all([API.getAllBookings(), API.getAllUsers()]);
+        strip.innerHTML = `
+          <div class="stat-card"><div class="stat-val">${bData.bookings.length}</div><div class="stat-label">Total Bookings</div></div>
+          <div class="stat-card"><div class="stat-val">${uData.users.length}</div><div class="stat-label">Registered Users</div></div>
+          <div class="stat-card"><div class="stat-val">${UI.rupee(bData.bookings.reduce((s,b)=>s+b.totalCost,0))}</div><div class="stat-label">Revenue</div></div>`;
+      }
+    } catch {}
+  }
+
+  async function loadRoleSection() {
+    const sec = document.getElementById("roleSection");
+    try {
+      if (user.role === "user") {
+        const data = await API.getMyBookings();
+        sec.innerHTML = `
+          <h2 class="page-title" id="bookingsSection">My Recent Bookings</h2>
+          <div class="card mt-2">
+            ${data.bookings.length === 0 ? '<div class="empty-state">No bookings yet. <a href="booking.html">Browse movies →</a></div>' :
+              `<div class="table-wrap"><table>
+                <thead><tr><th>Movie</th><th>Theater</th><th>Date</th><th>Tickets</th><th>Amount</th><th>Status</th></tr></thead>
+                <tbody>${data.bookings.slice(0,10).map(b => `
+                  <tr>
+                    <td>${b.movieTitle}</td>
+                    <td>${b.theaterName}</td>
+                    <td>${UI.formatDate(b.showDate)} ${b.showTiming}</td>
+                    <td>${b.ticketCount}</td>
+                    <td>${UI.rupee(b.totalCost)}</td>
+                    <td><span class="status status-${b.status}">${b.status}</span></td>
+                  </tr>`).join("")}
+                </tbody>
+              </table></div>`}
+          </div>`;
+      } else if (user.role === "admin") {
+        const data = await API.getAllBookings();
+        sec.innerHTML = `
+          <h2 class="page-title">Recent Bookings</h2>
+          <div class="card mt-2">
+            <div class="table-wrap"><table>
+              <thead><tr><th>User</th><th>Movie</th><th>Date</th><th>Tickets</th><th>Amount</th><th>Status</th></tr></thead>
+              <tbody>${data.bookings.slice(0,15).map(b => `
+                <tr>
+                  <td>${b.userName}<br><small style="color:var(--text2)">${b.userEmail}</small></td>
+                  <td>${b.movieTitle}</td>
+                  <td>${UI.formatDate(b.showDate)}</td>
+                  <td>${b.ticketCount}</td>
+                  <td>${UI.rupee(b.totalCost)}</td>
+                  <td><span class="status status-${b.status}">${b.status}</span></td>
+                </tr>`).join("")}
+              </tbody>
+            </table></div>
+          </div>`;
+      } else {
+        const [adminsData, usersData] = await Promise.all([API.getPendingAdmins(), API.getAllUsers()]);
+        const pending = adminsData.admins.filter(a => a.approvalStatus === "pending");
+        sec.innerHTML = `
+          <h2 class="page-title">Pending Admin Approvals</h2>
+          <div class="card mt-2">
+            ${pending.length === 0 ? '<div class="empty-state">No pending approvals.</div>' :
+              `<div class="table-wrap"><table>
+                <thead><tr><th>Company</th><th>Email</th><th>Registered</th><th>Action</th></tr></thead>
+                <tbody>${pending.map(a => `
+                  <tr>
+                    <td>${a.companyName || a.name}</td>
+                    <td>${a.email}</td>
+                    <td>${UI.formatDate(a.createdAt)}</td>
+                    <td>
+                      <button class="btn btn-success btn-sm" onclick="approveAdmin('${a.email}','approved')">Approve</button>
+                      <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="approveAdmin('${a.email}','rejected')">Reject</button>
+                    </td>
+                  </tr>`).join("")}
+                </tbody></table></div>`}
+          </div>`;
+      }
+    } catch (err) {
+      sec.innerHTML = `<div class="alert alert-error show">${err.message}</div>`;
+    }
+  }
+
+  async function approveAdmin(email, decision) {
+    try {
+      await API.approveCompany({ adminEmail: email, decision });
+      alert(`Admin ${decision} successfully`);
+      loadRoleSection();
+    } catch (err) { alert(err.message); }
+  }
+
+  async function openProfileModal() {
+    try {
+      const data = await API.getProfile();
+      document.getElementById("editName").value = data.user.name || "";
+      document.getElementById("editPhone").value = data.user.phone || "";
+      document.getElementById("profileModal").classList.add("open");
+    } catch (err) { alert(err.message); }
+  }
+
+  async function saveProfile() {
+    const name  = document.getElementById("editName").value.trim();
+    const phone = document.getElementById("editPhone").value.trim();
+    UI.hideAlert("profileAlert");
+    if (!name) return UI.showAlert("profileAlert", "Name cannot be empty");
+    UI.setLoading("btnSaveProfile", true);
+    try {
+      await API.updateProfile({ name, phone });
+      const u = Auth.user(); u.name = name; localStorage.setItem("user", JSON.stringify(u));
+      UI.showAlert("profileAlert", "Profile updated!", "success");
+      setTimeout(() => closeModal("profileModal"), 1500);
+    } catch (err) { UI.showAlert("profileAlert", err.message); }
+    finally { UI.setLoading("btnSaveProfile", false); }
+  }
+
+  async function confirmDeactivate() {
+    if (!confirm("Are you sure you want to deactivate your account? You will be logged out.")) return;
+    try {
+      await API.deactivate();
+      alert("Account deactivated. Goodbye!");
+      Auth.logout();
+    } catch (err) { alert(err.message); }
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+  function scrollTo(id) { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); }
+
+  init();
+</script>
+</body>
+</html>

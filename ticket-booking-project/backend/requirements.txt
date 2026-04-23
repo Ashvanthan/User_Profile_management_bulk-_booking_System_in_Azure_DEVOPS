@@ -1,0 +1,5 @@
+azure-functions==1.21.3
+azure-cosmos==4.7.0
+PyJWT==2.9.0
+bcrypt==4.2.0
+sendgrid==6.11.0

@@ -1,0 +1,862 @@
+<!--<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Panel — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media(max-width:600px){ .form-row { grid-template-columns: 1fr; } }
+    .tag-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; min-height: 42px; align-items: center; }
+    .tag { background: var(--accent2); color: #a0c0ff; font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; display: flex; align-items: center; gap: 5px; }
+    .tag button { background: none; border: none; color: inherit; cursor: pointer; font-size: 0.85rem; padding: 0; line-height: 1; }
+    .tag-input { background: none; border: none; color: var(--text); font-size: 0.85rem; outline: none; min-width: 80px; padding: 2px 4px; }
+    .timing-tag { background: rgba(233,69,96,0.1); border: 1px solid rgba(233,69,96,0.2); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">TicketBook</div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div id="navLinks" class="nav-links"></div>
+    <span id="navUser" class="nav-user"></span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-title">Admin Panel</div>
+  <p class="page-sub" id="adminSub"></p>
+
+  <div class="tabs" id="adminTabs"></div>
+
+  <div class="tab-panel" id="panelAddMovie">
+    <div style="max-width:680px">
+      <div class="card">
+        <div class="card-title">Add New Movie</div>
+        <div id="addMovieAlert" class="alert"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Movie Title *</label><input type="text" id="mvTitle" placeholder="e.g. Kalki 2898 AD"></div>
+          <div class="form-group"><label>Language *</label><input type="text" id="mvLang" placeholder="Tamil / Hindi / English"></div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="mvDesc" placeholder="Short synopsis..."></textarea></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Theater *</label>
+            <select id="mvTheater" onchange="onTheaterSelect()">
+              <option value="">Select Theater...</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Duration (minutes)</label><input type="number" id="mvDuration" value="120" min="60"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Ticket Price (₹) *</label><input type="number" id="mvPrice" placeholder="250" min="1"></div>
+          <div class="form-group"><label>Available Seats</label><input type="number" id="mvSeats" placeholder="200" min="1"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Show Date *</label><input type="date" id="mvDate"></div>
+          <div class="form-group"><label>Poster URL (optional)</label><input type="url" id="mvPoster" placeholder="https://..."></div>
+        </div>
+        <div class="form-group">
+          <label>Genre (press Enter to add)</label>
+          <div class="tag-input-wrap" id="genreTags">
+            <input class="tag-input" id="genreInput" placeholder="e.g. Action" onkeydown="addTag(event,'genre')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Show Timings (press Enter to add, e.g. 10:00)</label>
+          <div class="tag-input-wrap" id="timingTags">
+            <input class="tag-input" id="timingInput" placeholder="e.g. 10:00" onkeydown="addTag(event,'timing')">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnAddMovie" data-label="Add Movie" onclick="doAddMovie()">Add Movie</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelAddTheater">
+    <div style="max-width:560px">
+      <div class="card">
+        <div class="card-title">Add New Theater</div>
+        <div id="addTheaterAlert" class="alert"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Theater Name *</label><input type="text" id="thrName" placeholder="e.g. PVR Phoenix"></div>
+          <div class="form-group"><label>City *</label><input type="text" id="thrCity" placeholder="e.g. Chennai"></div>
+        </div>
+        <div class="form-group"><label>Full Address</label><textarea id="thrAddress" placeholder="Street, Area, City, Pincode" style="min-height:60px"></textarea></div>
+        <div class="form-group"><label>Total Seats</label><input type="number" id="thrSeats" value="200" min="10"></div>
+        <button class="btn btn-primary" id="btnAddTheater" data-label="Add Theater" onclick="doAddTheater()">Add Theater</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="tab-panel" id="panelUsers">
+    <div class="section-header">
+      <h3 style="font-weight:600">Registered Users</h3>
+      <input type="text" id="userSearch" placeholder="Search by name or email..." style="width:220px" oninput="filterUsers()">
+    </div>
+    <div class="card">
+      <div id="usersTableWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+  </div>
+
+
+  <div class="tab-panel" id="panelBookings">
+    <div class="section-header">
+      <h3 style="font-weight:600">All Bookings</h3>
+      <input type="text" id="bookSearch" placeholder="Search movie or user..." style="width:220px" oninput="filterBookings()">
+    </div>
+    <div class="card">
+      <div id="bookingsTableWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelApprove">
+    <div class="card">
+      <div class="card-title">Movie Company Approvals</div>
+      <div id="approvalsWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+  </div>
+
+  
+  <div class="tab-panel" id="panelFlagTheater">
+    <div class="card">
+      <div class="card-title">Manage Theaters</div>
+      <div id="flagTheatersWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+    <div class="modal-overlay" id="flagModal" style="position:relative;display:none;margin-top:1.5rem">
+      <div class="modal" style="max-width:100%">
+        <div class="modal-title">Flag / Update Theater Status</div>
+        <input type="hidden" id="flagTheaterId">
+        <input type="hidden" id="flagTheaterCity">
+        <div class="form-group"><label>Action</label>
+          <select id="flagAction">
+            <option value="flag">Flag (suspicious)</option>
+            <option value="disable">Disable</option>
+            <option value="activate">Re-activate</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Reason</label><input type="text" id="flagReason" placeholder="Describe the issue..."></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" id="btnFlag" data-label="Submit" onclick="doFlagTheater()">Submit</button>
+          <button class="btn btn-secondary" onclick="closeFlagModal()">Cancel</button>
+        </div>
+        <div id="flagAlert" class="alert" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<div class="modal-overlay" id="removeModal">
+  <div class="modal">
+    <div class="modal-title">Deactivate User <button class="modal-close" onclick="closeModal('removeModal')">✕</button></div>
+    <div id="removeAlert" class="alert"></div>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1rem">This will soft-deactivate the user. They will not be deleted from the database.</p>
+    <div class="form-group"><label>User Email</label><input type="email" id="removeEmail" readonly style="opacity:0.7"></div>
+    <div class="form-group"><label>Reason</label><input type="text" id="removeReason" placeholder="e.g. Fraudulent activity"></div>
+    <button class="btn btn-danger btn-full" id="btnRemove" data-label="Deactivate User" onclick="doRemoveUser()">Deactivate User</button>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!Auth.requireRole(["admin", "superadmin"])) throw new Error("redirect");
+
+  const user = Auth.user();
+  UI.renderNav("admin");
+  document.getElementById("adminSub").textContent =
+    user.role === "superadmin" ? "Super Admin — Full system control" : `Admin — ${user.companyName || user.email}`;
+
+  // ── Tab config by role ───────────────────────────────────
+  const allTabs = [
+    { id: "AddMovie",    label: "➕ Add Movie",      roles: ["admin","superadmin"], loader: loadTheaterDropdown },
+    { id: "AddTheater",  label: "🏢 Add Theater",    roles: ["admin","superadmin"] },
+    { id: "Users",       label: "👥 Users",           roles: ["admin","superadmin"], loader: loadUsers },
+    { id: "Bookings",    label: "🎟 Bookings",        roles: ["admin","superadmin"], loader: loadBookings },
+    { id: "Approve",     label: "✅ Approve Admins",  roles: ["superadmin"],         loader: loadApprovals },
+    { id: "FlagTheater", label: "🚩 Flag Theaters",   roles: ["superadmin"],         loader: loadFlagTheaters },
+  ];
+
+  const visibleTabs = allTabs.filter(t => t.roles.includes(user.role));
+  let activeTab = null;
+
+  const tabsEl = document.getElementById("adminTabs");
+  visibleTabs.forEach((t, i) => {
+    const btn = document.createElement("button");
+    btn.className = "tab" + (i === 0 ? " active" : "");
+    btn.textContent = t.label;
+    btn.onclick = () => switchAdminTab(t.id);
+    tabsEl.appendChild(btn);
+  });
+
+  // Handle anchor navigation
+  const anchor = location.hash.replace("#","");
+  const matchTab = visibleTabs.find(t => t.id.toLowerCase() === anchor.toLowerCase());
+  const firstTab = matchTab || visibleTabs[0];
+  switchAdminTab(firstTab.id);
+
+  function switchAdminTab(id) {
+    activeTab = id;
+    visibleTabs.forEach(t => {
+      document.getElementById("panel"+t.id).classList.toggle("active", t.id === id);
+    });
+    document.querySelectorAll("#adminTabs .tab").forEach((btn, i) => {
+      btn.classList.toggle("active", visibleTabs[i].id === id);
+    });
+    const tabDef = visibleTabs.find(t => t.id === id);
+    if (tabDef?.loader) tabDef.loader();
+  }
+
+  // ── Genre & Timing tag inputs ────────────────────────────
+  const genreTags = [], timingTags = [];
+  function addTag(e, type) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const input = document.getElementById(type + "Input");
+    const val = input.value.trim();
+    if (!val) return;
+    if (type === "genre") {
+      genreTags.push(val);
+      document.getElementById("genreTags").insertBefore(makeTag(val, type), input);
+    } else {
+      timingTags.push(val);
+      document.getElementById("timingTags").insertBefore(makeTag(val, type), input);
+    }
+    input.value = "";
+  }
+  function makeTag(val, type) {
+    const span = document.createElement("span");
+    span.className = "tag" + (type === "timing" ? " timing-tag" : "");
+    span.innerHTML = `${val} <button onclick="removeTag(this,'${type}','${val}')">✕</button>`;
+    return span;
+  }
+  function removeTag(btn, type, val) {
+    const arr = type === "genre" ? genreTags : timingTags;
+    const idx = arr.indexOf(val);
+    if (idx > -1) arr.splice(idx, 1);
+    btn.parentElement.remove();
+  }
+
+  // ── Load theater dropdown for Add Movie ─────────────────
+  async function loadTheaterDropdown() {
+    try {
+      const data = await API.getTheaters();
+      const sel = document.getElementById("mvTheater");
+      sel.innerHTML = `<option value="">Select Theater...</option>`;
+      data.theaters.forEach(t => {
+        const o = document.createElement("option");
+        o.value = t.id; o.dataset.name = t.name; o.dataset.city = t.city;
+        o.textContent = `${t.name} — ${t.city}`;
+        sel.appendChild(o);
+      });
+    } catch {}
+  }
+
+  function onTheaterSelect() {
+    const sel = document.getElementById("mvTheater");
+    const opt = sel.options[sel.selectedIndex];
+    // store city for later use if needed
+    sel.dataset.selectedCity = opt?.dataset?.city || "";
+    sel.dataset.selectedName = opt?.dataset?.name || "";
+  }
+
+  // ── ADD MOVIE ────────────────────────────────────────────
+  async function doAddMovie() {
+    UI.hideAlert("addMovieAlert");
+    const title    = document.getElementById("mvTitle").value.trim();
+    const lang     = document.getElementById("mvLang").value.trim();
+    const desc     = document.getElementById("mvDesc").value.trim();
+    const theatSel = document.getElementById("mvTheater");
+    const theaterId = theatSel.value;
+    const theaterName = theatSel.dataset.selectedName;
+    const price    = parseFloat(document.getElementById("mvPrice").value);
+    const seats    = parseInt(document.getElementById("mvSeats").value) || 200;
+    const date     = document.getElementById("mvDate").value;
+    const duration = parseInt(document.getElementById("mvDuration").value) || 120;
+    const poster   = document.getElementById("mvPoster").value.trim();
+
+    if (!title) return UI.showAlert("addMovieAlert", "Movie title is required");
+    if (!theaterId) return UI.showAlert("addMovieAlert", "Please select a theater");
+    if (!price || price < 1) return UI.showAlert("addMovieAlert", "Valid ticket price is required");
+    if (!date) return UI.showAlert("addMovieAlert", "Show date is required");
+    if (timingTags.length === 0) return UI.showAlert("addMovieAlert", "Add at least one show timing (press Enter)");
+
+    UI.setLoading("btnAddMovie", true);
+    try {
+      const data = await API.addMovie({
+        title, language: lang, description: desc,
+        theaterId, theaterName, price, availableSeats: seats,
+        showDate: date, durationMins: duration,
+        posterUrl: poster, genre: [...genreTags], showTimings: [...timingTags]
+      });
+      UI.showAlert("addMovieAlert", `Movie added! ID: ${data.movieId}`, "success");
+      document.getElementById("mvTitle").value = "";
+      document.getElementById("mvDesc").value = "";
+      genreTags.length = 0; timingTags.length = 0;
+      document.getElementById("genreTags").querySelectorAll(".tag").forEach(t => t.remove());
+      document.getElementById("timingTags").querySelectorAll(".tag").forEach(t => t.remove());
+    } catch (err) {
+      UI.showAlert("addMovieAlert", err.message);
+    } finally {
+      UI.setLoading("btnAddMovie", false);
+    }
+  }
+
+  // ── ADD THEATER ──────────────────────────────────────────
+  async function doAddTheater() {
+    UI.hideAlert("addTheaterAlert");
+    const name    = document.getElementById("thrName").value.trim();
+    const city    = document.getElementById("thrCity").value.trim();
+    const address = document.getElementById("thrAddress").value.trim();
+    const seats   = parseInt(document.getElementById("thrSeats").value) || 200;
+
+    if (!name || !city) return UI.showAlert("addTheaterAlert", "Name and city are required");
+
+    UI.setLoading("btnAddTheater", true);
+    try {
+      const data = await API.addTheater({ name, city, address, totalSeats: seats });
+      UI.showAlert("addTheaterAlert", `Theater added! ID: ${data.theaterId}`, "success");
+      document.getElementById("thrName").value = "";
+      document.getElementById("thrAddress").value = "";
+    } catch (err) {
+      UI.showAlert("addTheaterAlert", err.message);
+    } finally {
+      UI.setLoading("btnAddTheater", false);
+    }
+  }
+
+  // ── USERS TABLE ──────────────────────────────────────────
+  let allUsersData = [];
+  async function loadUsers() {
+    try {
+      const data = await API.getAllUsers();
+      allUsersData = data.users;
+      renderUsersTable(allUsersData);
+    } catch (err) {
+      document.getElementById("usersTableWrap").innerHTML = `<div class="alert alert-error show">${err.message}</div>`;
+    }
+  }
+  function filterUsers() {
+    const q = document.getElementById("userSearch").value.toLowerCase();
+    renderUsersTable(allUsersData.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
+  }
+  function renderUsersTable(users) {
+    const wrap = document.getElementById("usersTableWrap");
+    if (!users.length) { wrap.innerHTML = `<div class="empty-state">No users found.</div>`; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Joined</th><th>Action</th></tr></thead>
+      <tbody>${users.map(u => `<tr>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td><span class="status status-${u.status}">${u.status}</span></td>
+        <td>${UI.formatDate(u.createdAt)}</td>
+        <td>${u.status !== "deactivated" ? `<button class="btn btn-danger btn-sm" onclick="openRemoveModal('${u.email}')">Deactivate</button>` : '<span style="color:var(--text2);font-size:0.8rem">Deactivated</span>'}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  function openRemoveModal(email) {
+    document.getElementById("removeEmail").value = email;
+    document.getElementById("removeReason").value = "";
+    UI.hideAlert("removeAlert");
+    document.getElementById("removeModal").classList.add("open");
+  }
+  async function doRemoveUser() {
+    const email  = document.getElementById("removeEmail").value;
+    const reason = document.getElementById("removeReason").value.trim();
+    UI.setLoading("btnRemove", true);
+    try {
+      await API.removeUser({ email, reason });
+      UI.showAlert("removeAlert", "User deactivated.", "success");
+      setTimeout(() => { closeModal("removeModal"); loadUsers(); }, 1500);
+    } catch (err) {
+      UI.showAlert("removeAlert", err.message);
+    } finally {
+      UI.setLoading("btnRemove", false);
+    }
+  }
+
+  // ── BOOKINGS TABLE ───────────────────────────────────────
+  let allBookingsData = [];
+  async function loadBookings() {
+    try {
+      const data = await API.getAllBookings();
+      allBookingsData = data.bookings;
+      renderBookingsTable(allBookingsData);
+    } catch (err) {
+      document.getElementById("bookingsTableWrap").innerHTML = `<div class="alert alert-error show">${err.message}</div>`;
+    }
+  }
+  function filterBookings() {
+    const q = document.getElementById("bookSearch").value.toLowerCase();
+    renderBookingsTable(allBookingsData.filter(b =>
+      b.movieTitle?.toLowerCase().includes(q) || b.userEmail?.toLowerCase().includes(q) || b.userName?.toLowerCase().includes(q)
+    ));
+  }
+  function renderBookingsTable(bookings) {
+    const wrap = document.getElementById("bookingsTableWrap");
+    if (!bookings.length) { wrap.innerHTML = `<div class="empty-state">No bookings found.</div>`; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>User</th><th>Movie</th><th>Theater</th><th>Show</th><th>Tickets</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
+      <tbody>${bookings.map(b => `<tr>
+        <td>${b.userName || "—"}<br><small style="color:var(--text2)">${b.userEmail}</small></td>
+        <td>${b.movieTitle}</td>
+        <td>${b.theaterName || "—"}</td>
+        <td>${UI.formatDate(b.showDate)}<br><small>${b.showTiming}</small></td>
+        <td>${b.ticketCount}</td>
+        <td>${UI.rupee(b.totalCost)}</td>
+        <td>${b.isBulk ? '<span class="badge-role badge-admin">Bulk</span>' : 'Single'}</td>
+        <td><span class="status status-${b.status}">${b.status}</span></td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  // ── APPROVALS (superadmin) ───────────────────────────────
+  async function loadApprovals() {
+    try {
+      const data = await API.getPendingAdmins();
+      const wrap = document.getElementById("approvalsWrap");
+      if (!data.admins.length) { wrap.innerHTML = `<div class="empty-state">No admins registered yet.</div>`; return; }
+      wrap.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>Company</th><th>Admin Email</th><th>Status</th><th>Registered</th><th>Action</th></tr></thead>
+        <tbody>${data.admins.map(a => `<tr>
+          <td>${a.companyName || a.name}</td>
+          <td>${a.email}</td>
+          <td><span class="status status-${a.approvalStatus}">${a.approvalStatus}</span></td>
+          <td>${UI.formatDate(a.createdAt)}</td>
+          <td>${a.approvalStatus === "pending" ?
+            `<button class="btn btn-success btn-sm" onclick="doApprove('${a.email}','approved')">Approve</button>
+             <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="doApprove('${a.email}','rejected')">Reject</button>` :
+            `<button class="btn btn-secondary btn-sm" onclick="doApprove('${a.email}','pending')">Reset</button>`}
+          </td>
+        </tr>`).join("")}</tbody>
+      </table></div>`;
+    } catch (err) {
+      document.getElementById("approvalsWrap").innerHTML = `<div class="alert alert-error show">${err.message}</div>`;
+    }
+  }
+  async function doApprove(email, decision) {
+    try {
+      await API.approveCompany({ adminEmail: email, decision });
+      loadApprovals();
+    } catch (err) { alert(err.message); }
+  }
+
+  // ── FLAG THEATERS (superadmin) ───────────────────────────
+  async function loadFlagTheaters() {
+    try {
+      const data = await API.getTheaters();
+      const wrap = document.getElementById("flagTheatersWrap");
+      if (!data.theaters.length) { wrap.innerHTML = `<div class="empty-state">No theaters found.</div>`; return; }
+      wrap.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>Theater</th><th>City</th><th>Seats</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>${data.theaters.map(t => `<tr>
+          <td>${t.name}</td>
+          <td>${t.city}</td>
+          <td>${t.totalSeats}</td>
+          <td><span class="status status-${t.status}">${t.status}</span></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="openFlagModal('${t.id}','${t.city}')">Manage</button></td>
+        </tr>`).join("")}</tbody>
+      </table></div>`;
+    } catch (err) {
+      document.getElementById("flagTheatersWrap").innerHTML = `<div class="alert alert-error show">${err.message}</div>`;
+    }
+  }
+  function openFlagModal(id, city) {
+    document.getElementById("flagTheaterId").value = id;
+    document.getElementById("flagTheaterCity").value = city;
+    document.getElementById("flagReason").value = "";
+    UI.hideAlert("flagAlert");
+    document.getElementById("flagModal").style.display = "flex";
+  }
+  function closeFlagModal() { document.getElementById("flagModal").style.display = "none"; }
+  async function doFlagTheater() {
+    const theaterId = document.getElementById("flagTheaterId").value;
+    const city      = document.getElementById("flagTheaterCity").value;
+    const action    = document.getElementById("flagAction").value;
+    const reason    = document.getElementById("flagReason").value.trim();
+    UI.setLoading("btnFlag", true);
+    try {
+      await API.flagTheater({ theaterId, city, action, reason });
+      UI.showAlert("flagAlert", "Theater updated successfully!", "success");
+      setTimeout(() => { closeFlagModal(); loadFlagTheaters(); }, 1500);
+    } catch (err) {
+      UI.showAlert("flagAlert", err.message);
+    } finally {
+      UI.setLoading("btnFlag", false);
+    }
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+</script>
+</body>
+</html>
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Panel — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media(max-width:600px){ .form-row { grid-template-columns: 1fr; } }
+    .tag-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; min-height: 42px; align-items: center; }
+    .tag { background: var(--accent2); color: #a0c0ff; font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; display: flex; align-items: center; gap: 5px; }
+    .tag button { background: none; border: none; color: inherit; cursor: pointer; font-size: 0.85rem; padding: 0; line-height: 1; }
+    .tag-input { background: none; border: none; color: var(--text); font-size: 0.85rem; outline: none; min-width: 80px; padding: 2px 4px; }
+    .timing-tag { background: rgba(233,69,96,0.1); border: 1px solid rgba(233,69,96,0.2); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">TicketBook</div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div id="navLinks" class="nav-links"></div>
+    <span id="navUser" class="nav-user"></span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-title">Admin Panel</div>
+  <p class="page-sub" id="adminSub"></p>
+
+  <div class="tabs" id="adminTabs"></div>
+
+  <div class="tab-panel" id="panelAddMovie">
+    <div style="max-width:680px">
+      <div class="card">
+        <div class="card-title">Add New Movie</div>
+        <div id="addMovieAlert" class="alert"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Movie Title *</label><input type="text" id="mvTitle" placeholder="e.g. Kalki 2898 AD"></div>
+          <div class="form-group"><label>Language *</label><input type="text" id="mvLang" placeholder="Tamil / Hindi / English"></div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="mvDesc" placeholder="Short synopsis..."></textarea></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Theater *</label>
+            <select id="mvTheater" onchange="onTheaterSelect()">
+              <option value="">Select Theater...</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Duration (minutes)</label><input type="number" id="mvDuration" value="120" min="60"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Ticket Price (₹) *</label><input type="number" id="mvPrice" placeholder="250" min="1"></div>
+          <div class="form-group"><label>Available Seats</label><input type="number" id="mvSeats" placeholder="200" min="1"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Show Date *</label><input type="date" id="mvDate"></div>
+          <div class="form-group"><label>Poster URL (optional)</label><input type="url" id="mvPoster" placeholder="https://..."></div>
+        </div>
+        <div class="form-group">
+          <label>Genre (press Enter to add)</label>
+          <div class="tag-input-wrap" id="genreTags">
+            <input class="tag-input" id="genreInput" placeholder="e.g. Action" onkeydown="addTag(event,'genre')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Show Timings (press Enter to add, e.g. 10:00)</label>
+          <div class="tag-input-wrap" id="timingTags">
+            <input class="tag-input" id="timingInput" placeholder="e.g. 10:00" onkeydown="addTag(event,'timing')">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnAddMovie" data-label="Add Movie" onclick="doAddMovie()">Add Movie</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelAddTheater">
+    <div style="max-width:560px">
+      <div class="card">
+        <div class="card-title">Add New Theater</div>
+        <div id="addTheaterAlert" class="alert"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Theater Name *</label><input type="text" id="thrName" placeholder="e.g. PVR Phoenix"></div>
+          <div class="form-group"><label>City *</label><input type="text" id="thrCity" placeholder="e.g. Chennai"></div>
+        </div>
+        <div class="form-group"><label>Full Address</label><textarea id="thrAddress" placeholder="Street, Area, City, Pincode" style="min-height:60px"></textarea></div>
+        <div class="form-group"><label>Total Seats</label><input type="number" id="thrSeats" value="200" min="10"></div>
+        <button class="btn btn-primary" id="btnAddTheater" data-label="Add Theater" onclick="doAddTheater()">Add Theater</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelUsers">
+    <div class="section-header">
+      <h3 style="font-weight:600">Registered Users</h3>
+      <input type="text" id="userSearch" placeholder="Search by name or email..." style="width:220px" oninput="filterUsers()">
+    </div>
+    <div class="card">
+      <div id="usersTableWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelBookings">
+    <div class="section-header">
+      <h3 style="font-weight:600">All Bookings</h3>
+      <input type="text" id="bookSearch" placeholder="Search movie or user..." style="width:220px" oninput="filterBookings()">
+    </div>
+    <div class="card">
+      <div id="bookingsTableWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelApprove">
+    <div class="card">
+      <div class="card-title">Movie Company Approvals</div>
+      <div id="approvalsWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panelFlagTheater">
+    <div class="card">
+      <div class="card-title">Manage Theaters</div>
+      <div id="flagTheatersWrap"><div class="empty-state"><span class="spinner"></span> Loading...</div></div>
+    </div>
+    <div class="modal-overlay" id="flagModal" style="position:relative;display:none;margin-top:1.5rem">
+      <div class="modal" style="max-width:100%">
+        <div class="modal-title">Flag / Update Theater Status</div>
+        <input type="hidden" id="flagTheaterId">
+        <input type="hidden" id="flagTheaterCity">
+        <div class="form-group"><label>Action</label>
+          <select id="flagAction">
+            <option value="flag">Flag (suspicious)</option>
+            <option value="disable">Disable</option>
+            <option value="activate">Re-activate</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Reason</label><input type="text" id="flagReason" placeholder="Describe the issue..."></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" id="btnFlag" data-label="Submit" onclick="doFlagTheater()">Submit</button>
+          <button class="btn btn-secondary" onclick="closeFlagModal()">Cancel</button>
+        </div>
+        <div id="flagAlert" class="alert" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="removeModal">
+  <div class="modal">
+    <div class="modal-title">Deactivate User <button class="modal-close" onclick="closeModal('removeModal')">✕</button></div>
+    <div id="removeAlert" class="alert"></div>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1rem">This will soft-deactivate the user. They will not be deleted from the database.</p>
+    <div class="form-group"><label>User Email</label><input type="email" id="removeEmail" readonly style="opacity:0.7"></div>
+    <div class="form-group"><label>Reason</label><input type="text" id="removeReason" placeholder="e.g. Fraudulent activity"></div>
+    <button class="btn btn-danger btn-full" id="btnRemove" data-label="Deactivate User" onclick="doRemoveUser()">Deactivate User</button>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!Auth.requireRole(["admin", "superadmin"])) throw new Error("redirect");
+
+  const user = Auth.user();
+  UI.renderNav("admin");
+  document.getElementById("adminSub").textContent =
+    user.role === "superadmin" ? "Super Admin — Full system control" : `Admin — ${user.companyName || user.email}`;
+
+  // ── Tab config ──────────────────────────────────────────
+  const allTabs = [
+    { id: "AddMovie",    label: "➕ Add Movie",      roles: ["admin","superadmin"], loader: loadTheaterDropdown },
+    { id: "AddTheater",  label: "🏢 Add Theater",    roles: ["admin","superadmin"] },
+    { id: "Users",       label: "👥 Users",           roles: ["admin","superadmin"], loader: loadUsers },
+    { id: "Bookings",    label: "🎟 Bookings",        roles: ["admin","superadmin"], loader: loadBookings },
+    { id: "Approve",     label: "✅ Approve Admins",  roles: ["superadmin"],         loader: loadApprovals },
+    { id: "FlagTheater", label: "🚩 Flag Theaters",   roles: ["superadmin"],         loader: loadFlagTheaters },
+  ];
+
+  const visibleTabs = allTabs.filter(t => t.roles.includes(user.role));
+  let activeTab = null;
+
+  const tabsEl = document.getElementById("adminTabs");
+  visibleTabs.forEach((t, i) => {
+    const btn = document.createElement("button");
+    btn.className = "tab" + (i === 0 ? " active" : "");
+    btn.textContent = t.label;
+    btn.onclick = () => switchAdminTab(t.id);
+    tabsEl.appendChild(btn);
+  });
+
+  const anchor = location.hash.replace("#","");
+  const matchTab = visibleTabs.find(t => t.id.toLowerCase() === anchor.toLowerCase());
+  const firstTab = matchTab || visibleTabs[0];
+  switchAdminTab(firstTab.id);
+
+  function switchAdminTab(id) {
+    activeTab = id;
+    visibleTabs.forEach(t => {
+      const panel = document.getElementById("panel"+t.id);
+      if(panel) panel.classList.toggle("active", t.id === id);
+    });
+    document.querySelectorAll("#adminTabs .tab").forEach((btn, i) => {
+      btn.classList.toggle("active", visibleTabs[i].id === id);
+    });
+    const tabDef = visibleTabs.find(t => t.id === id);
+    if (tabDef?.loader) tabDef.loader();
+  }
+
+  // ── Tag logic ──────────────────────────────────────────
+  const genreTags = [], timingTags = [];
+  function addTag(e, type) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const input = document.getElementById(type + "Input");
+    const val = input.value.trim();
+    if (!val) return;
+    if (type === "genre") {
+      genreTags.push(val);
+      document.getElementById("genreTags").insertBefore(makeTag(val, type), input);
+    } else {
+      timingTags.push(val);
+      document.getElementById("timingTags").insertBefore(makeTag(val, type), input);
+    }
+    input.value = "";
+  }
+  function makeTag(val, type) {
+    const span = document.createElement("span");
+    span.className = "tag" + (type === "timing" ? " timing-tag" : "");
+    span.innerHTML = `${val} <button onclick="removeTag(this,'${type}','${val}')">✕</button>`;
+    return span;
+  }
+  function removeTag(btn, type, val) {
+    const arr = type === "genre" ? genreTags : timingTags;
+    const idx = arr.indexOf(val);
+    if (idx > -1) arr.splice(idx, 1);
+    btn.parentElement.remove();
+  }
+
+  async function loadTheaterDropdown() {
+    try {
+      const data = await API.getTheaters();
+      const sel = document.getElementById("mvTheater");
+      sel.innerHTML = `<option value="">Select Theater...</option>`;
+      data.theaters.forEach(t => {
+        const o = document.createElement("option");
+        o.value = t.id; o.dataset.name = t.name; o.dataset.city = t.city;
+        o.textContent = `${t.name} — ${t.city}`;
+        sel.appendChild(o);
+      });
+    } catch {}
+  }
+
+  function onTheaterSelect() {
+    const sel = document.getElementById("mvTheater");
+    const opt = sel.options[sel.selectedIndex];
+    sel.dataset.selectedCity = opt?.dataset?.city || "";
+    sel.dataset.selectedName = opt?.dataset?.name || "";
+  }
+
+  async function doAddMovie() {
+    UI.hideAlert("addMovieAlert");
+    const title = document.getElementById("mvTitle").value.trim();
+    const lang = document.getElementById("mvLang").value.trim();
+    const desc = document.getElementById("mvDesc").value.trim();
+    const theatSel = document.getElementById("mvTheater");
+    const theaterId = theatSel.value;
+    const theaterName = theatSel.dataset.selectedName;
+    const price = parseFloat(document.getElementById("mvPrice").value);
+    const seats = parseInt(document.getElementById("mvSeats").value) || 200;
+    const date = document.getElementById("mvDate").value;
+    const duration = parseInt(document.getElementById("mvDuration").value) || 120;
+    const poster = document.getElementById("mvPoster").value.trim();
+
+    if (!title || !theaterId || !price || !date || timingTags.length === 0) {
+      return UI.showAlert("addMovieAlert", "Fill all required fields");
+    }
+
+    UI.setLoading("btnAddMovie", true);
+    try {
+      await API.addMovie({
+        title, language: lang, description: desc,
+        theaterId, theaterName, price, availableSeats: seats,
+        showDate: date, durationMins: duration,
+        posterUrl: poster, genre: [...genreTags], showTimings: [...timingTags]
+      });
+      UI.showAlert("addMovieAlert", `Movie added!`, "success");
+    } catch (err) { UI.showAlert("addMovieAlert", err.message); }
+    finally { UI.setLoading("btnAddMovie", false); }
+  }
+
+  async function doAddTheater() {
+    UI.hideAlert("addTheaterAlert");
+    const name = document.getElementById("thrName").value.trim();
+    const city = document.getElementById("thrCity").value.trim();
+    const address = document.getElementById("thrAddress").value.trim();
+    const seats = parseInt(document.getElementById("thrSeats").value) || 200;
+    if (!name || !city) return UI.showAlert("addTheaterAlert", "Name and city required");
+    UI.setLoading("btnAddTheater", true);
+    try {
+      await API.addTheater({ name, city, address, totalSeats: seats });
+      UI.showAlert("addTheaterAlert", `Theater added!`, "success");
+    } catch (err) { UI.showAlert("addTheaterAlert", err.message); }
+    finally { UI.setLoading("btnAddTheater", false); }
+  }
+
+  async function loadUsers() {
+    try {
+      const data = await API.getAllUsers();
+      allUsersData = data.users;
+      renderUsersTable(allUsersData);
+    } catch (err) { document.getElementById("usersTableWrap").innerHTML = err.message; }
+  }
+  function renderUsersTable(users) {
+    const wrap = document.getElementById("usersTableWrap");
+    wrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>${users.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.status}</td><td><button onclick="openRemoveModal('${u.email}')">Deactivate</button></td></tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  async function loadBookings() {
+    try {
+      const data = await API.getAllBookings();
+      renderBookingsTable(data.bookings);
+    } catch (err) { document.getElementById("bookingsTableWrap").innerHTML = err.message; }
+  }
+  function renderBookingsTable(bookings) {
+    const wrap = document.getElementById("bookingsTableWrap");
+    wrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>User</th><th>Movie</th><th>Tickets</th><th>Status</th></tr></thead>
+      <tbody>${bookings.map(b => `<tr><td>${b.userEmail}</td><td>${b.movieTitle}</td><td>${b.ticketCount}</td><td>${b.status}</td></tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  async function loadApprovals() {
+    try {
+      const data = await API.getPendingAdmins();
+      document.getElementById("approvalsWrap").innerHTML = data.admins.map(a => `<div>${a.email} <button onclick="doApprove('${a.email}','approved')">Approve</button></div>`).join("");
+    } catch {}
+  }
+  async function doApprove(email, decision) { await API.approveCompany({ adminEmail: email, decision }); loadApprovals(); }
+
+  async function loadFlagTheaters() {
+    try {
+      const data = await API.getTheaters();
+      document.getElementById("flagTheatersWrap").innerHTML = data.theaters.map(t => `<div>${t.name} <button onclick="openFlagModal('${t.id}','${t.city}')">Manage</button></div>`).join("");
+    } catch {}
+  }
+  function openFlagModal(id, city) {
+    document.getElementById("flagTheaterId").value = id;
+    document.getElementById("flagTheaterCity").value = city;
+    document.getElementById("flagModal").style.display = "flex";
+  }
+  function closeFlagModal() { document.getElementById("flagModal").style.display = "none"; }
+  async function doFlagTheater() {
+    await API.flagTheater({ theaterId: document.getElementById("flagTheaterId").value, city: document.getElementById("flagTheaterCity").value, action: document.getElementById("flagAction").value, reason: document.getElementById("flagReason").value });
+    closeFlagModal(); loadFlagTheaters();
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+</script>
+</body>
+</html>

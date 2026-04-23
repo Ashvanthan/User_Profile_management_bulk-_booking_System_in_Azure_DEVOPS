@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "COSMOS_ENDPOINT": "https://tickerbooking-cosmos.documents.azure.com:443/",
+    "COSMOS_KEY": "RY2LDy0ClWeYVkpjEXrk9hybtMZ6p3pbOfeUbheWnnwQTtEYFw7gMipa1ZT0L7CMnVsJEiGgTq1FACDbdeH5ZQ==",
+    "COSMOS_DB_NAME": "ticketing-db",
+    "JWT_SECRET": "ashvanthan-project-secret-key-240701056",
+    "FROM_EMAIL": "ashvanthansr@gmail.com"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*"
+  }
+}

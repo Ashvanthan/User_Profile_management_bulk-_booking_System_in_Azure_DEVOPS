@@ -1,0 +1,338 @@
+<!--<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; }
+    .auth-wrap { width: 100%; max-width: 460px; }
+    .auth-logo { text-align: center; margin-bottom: 1.5rem; }
+    .auth-logo h1 { font-size: 1.5rem; color: var(--accent); }
+    .role-selector { display: flex; gap: 10px; margin-bottom: 1.2rem; }
+    .role-btn { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text2); cursor: pointer; text-align: center; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .role-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(233,69,96,0.08); }
+    .role-btn span { display: block; font-size: 1.2rem; margin-bottom: 4px; }
+    .password-strength { height: 3px; border-radius: 2px; margin-top: 5px; transition: all 0.3s; }
+    .strength-weak { background: var(--danger); width: 30%; }
+    .strength-medium { background: var(--warning); width: 60%; }
+    .strength-strong { background: var(--success); width: 100%; }
+    .steps { display: flex; gap: 8px; margin-bottom: 1.5rem; align-items: center; }
+    .step { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+    .step-done { background: var(--success); color: #fff; }
+    .step-active { background: var(--accent); color: #fff; }
+    .step-pending { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+    .step-line { flex: 1; height: 1px; background: var(--border); }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <h1>🎟 TicketBook</h1>
+    <p style="color:var(--text2);font-size:0.85rem">Create your account</p>
+  </div>
+
+  <div class="steps">
+    <div class="step step-active" id="step1">1</div>
+    <div class="step-line"></div>
+    <div class="step step-pending" id="step2">2</div>
+    <div class="step-line"></div>
+    <div class="step step-pending" id="step3">✓</div>
+  </div>
+
+  <div id="panelRegister">
+    <div class="card">
+      <div class="card-title">Create Account</div>
+      <div id="regAlert" class="alert"></div>
+
+      <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.8rem">Register as:</p>
+      <div class="role-selector">
+        <div class="role-btn active" id="roleUser" onclick="selectRole('user')"><span>👤</span>User</div>
+        <div class="role-btn" id="roleAdmin" onclick="selectRole('admin')"><span>🏢</span>Movie Company</div>
+      </div>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="regName" placeholder="Your full name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="regEmail" placeholder="you@email.com">
+      </div>
+      <div class="form-group" id="companyGroup" style="display:none">
+        <label>Company / Cinema Name</label>
+        <input type="text" id="regCompany" placeholder="e.g. PVR Cinemas">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regPassword" placeholder="Min 8 characters" oninput="checkStrength(this.value)">
+        <div class="password-strength" id="strengthBar"></div>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="regConfirm" placeholder="Repeat password">
+      </div>
+      <button class="btn btn-primary btn-full mt-1" id="btnRegister" data-label="Create Account" onclick="doRegister()">Create Account</button>
+      <p class="text-center mt-2" style="font-size:0.82rem;color:var(--text2)">Already have an account? <a href="login.html">Login</a></p>
+    </div>
+  </div>
+
+  <div id="panelOtp" style="display:none">
+    <div class="card">
+      <div class="card-title">Verify Your Email</div>
+      <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1.2rem">We sent a 6-digit OTP to <strong id="emailDisplay"></strong>. Enter it below.</p>
+      <div id="otpAlert" class="alert"></div>
+      <div class="form-group">
+        <label>OTP Code</label>
+        <input type="text" id="otpCode" placeholder="6-digit code" maxlength="6" style="letter-spacing:8px;font-size:1.4rem;text-align:center;font-weight:700">
+      </div>
+      <button class="btn btn-primary btn-full" id="btnOtp" data-label="Verify OTP" onclick="doVerifyOtp()">Verify OTP</button>
+      <p class="text-center mt-2" style="font-size:0.82rem;color:var(--text2)">Didn't receive it? <a href="#" onclick="goBack()">Go back and re-register</a></p>
+    </div>
+  </div>
+
+  <div id="panelSuccess" style="display:none">
+    <div class="card text-center">
+      <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
+      <div class="card-title">Account Created!</div>
+      <p id="successMsg" style="color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem"></p>
+      <a href="login.html" class="btn btn-primary btn-full">Go to Login</a>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (Auth.isLoggedIn()) window.location.href = "dashboard.html";
+
+  let selectedRole = "user";
+  let registeredEmail = "";
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById("roleUser").classList.toggle("active", role === "user");
+    document.getElementById("roleAdmin").classList.toggle("active", role === "admin");
+    document.getElementById("companyGroup").style.display = role === "admin" ? "block" : "none";
+  }
+
+  function checkStrength(val) {
+    const bar = document.getElementById("strengthBar");
+    if (!val) { bar.className = "password-strength"; return; }
+    const strong = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}/.test(val);
+    const medium = /(?=.*[a-zA-Z])(?=.*\d).{6,}/.test(val);
+    bar.className = "password-strength " + (strong ? "strength-strong" : medium ? "strength-medium" : "strength-weak");
+  }
+
+  async function doRegister() {
+    const name     = document.getElementById("regName").value.trim();
+    const email    = document.getElementById("regEmail").value.trim().toLowerCase();
+    const password = document.getElementById("regPassword").value;
+    const confirm  = document.getElementById("regConfirm").value;
+    const company  = document.getElementById("regCompany").value.trim();
+    UI.hideAlert("regAlert");
+
+    if (!name || !email || !password) return UI.showAlert("regAlert", "All fields are required");
+    if (password.length < 8) return UI.showAlert("regAlert", "Password must be at least 8 characters");
+    if (password !== confirm) return UI.showAlert("regAlert", "Passwords do not match");
+    if (selectedRole === "admin" && !company) return UI.showAlert("regAlert", "Company name is required for admin registration");
+
+    const payload = { name, email, password, role: selectedRole };
+    if (selectedRole === "admin") payload.companyName = company;
+
+    UI.setLoading("btnRegister", true);
+    try {
+      await API.register(payload);
+      registeredEmail = email;
+      document.getElementById("emailDisplay").textContent = email;
+      showStep(2);
+    } catch (err) {
+      UI.showAlert("regAlert", err.message);
+    } finally {
+      UI.setLoading("btnRegister", false);
+    }
+  }
+
+  async function doVerifyOtp() {
+    const otp = document.getElementById("otpCode").value.trim();
+    UI.hideAlert("otpAlert");
+    if (otp.length !== 6) return UI.showAlert("otpAlert", "Enter the 6-digit OTP");
+
+    UI.setLoading("btnOtp", true);
+    try {
+      await API.verifyOtp({ email: registeredEmail, otp });
+      const msg = selectedRole === "admin"
+        ? "Your admin account is pending approval by the Super Admin. You can login once approved."
+        : "Your account is verified! You can now login.";
+      document.getElementById("successMsg").textContent = msg;
+      showStep(3);
+    } catch (err) {
+      UI.showAlert("otpAlert", err.message);
+    } finally {
+      UI.setLoading("btnOtp", false);
+    }
+  }
+
+  function showStep(n) {
+    document.getElementById("panelRegister").style.display = n === 1 ? "block" : "none";
+    document.getElementById("panelOtp").style.display      = n === 2 ? "block" : "none";
+    document.getElementById("panelSuccess").style.display  = n === 3 ? "block" : "none";
+    document.getElementById("step1").className = "step " + (n > 1 ? "step-done" : "step-active");
+    document.getElementById("step2").className = "step " + (n > 2 ? "step-done" : n === 2 ? "step-active" : "step-pending");
+    document.getElementById("step3").className = "step " + (n === 3 ? "step-active" : "step-pending");
+  }
+  function goBack() { showStep(1); }
+</script>
+</body>
+</html>
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; }
+    .auth-wrap { width: 100%; max-width: 460px; }
+    .auth-logo { text-align: center; margin-bottom: 1.5rem; }
+    .auth-logo h1 { font-size: 1.5rem; color: var(--accent); }
+    .role-selector { display: flex; gap: 10px; margin-bottom: 1.2rem; }
+    .role-btn { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text2); cursor: pointer; text-align: center; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .role-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(233,69,96,0.08); }
+    .role-btn span { display: block; font-size: 1.2rem; margin-bottom: 4px; }
+    .password-strength { height: 3px; border-radius: 2px; margin-top: 5px; transition: all 0.3s; }
+    .strength-weak { background: var(--danger); width: 30%; }
+    .strength-medium { background: var(--warning); width: 60%; }
+    .strength-strong { background: var(--success); width: 100%; }
+    .steps { display: flex; gap: 8px; margin-bottom: 1.5rem; align-items: center; }
+    .step { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+    .step-done { background: var(--success); color: #fff; }
+    .step-active { background: var(--accent); color: #fff; }
+    .step-pending { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+    .step-line { flex: 1; height: 1px; background: var(--border); }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <h1>🎟 TicketBook</h1>
+    <p style="color:var(--text2);font-size:0.85rem">Create your account</p>
+  </div>
+
+  <div class="steps">
+    <div class="step step-active" id="step1">1</div>
+    <div class="step-line"></div>
+    <div class="step step-pending" id="step2">2</div>
+    <div class="step-line"></div>
+    <div class="step step-pending" id="step3">✓</div>
+  </div>
+
+  <div id="panelRegister">
+    <div class="card">
+      <div class="card-title">Create Account</div>
+      <div id="regAlert" class="alert"></div>
+
+      <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.8rem">Register as:</p>
+      <div class="role-selector">
+        <div class="role-btn active" id="roleUser" onclick="selectRole('user')"><span>👤</span>User</div>
+        <div class="role-btn" id="roleAdmin" onclick="selectRole('admin')"><span>🏢</span>Movie Company</div>
+      </div>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="regName" placeholder="Your full name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="regEmail" placeholder="you@email.com">
+      </div>
+      <div class="form-group" id="companyGroup" style="display:none">
+        <label>Company / Cinema Name</label>
+        <input type="text" id="regCompany" placeholder="e.g. PVR Cinemas">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regPassword" placeholder="Min 8 characters" oninput="checkStrength(this.value)">
+        <div class="password-strength" id="strengthBar"></div>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="regConfirm" placeholder="Repeat password">
+      </div>
+      <button class="btn btn-primary btn-full mt-1" id="btnRegister" data-label="Create Account" onclick="doRegister()">Create Account</button>
+      <p class="text-center mt-2" style="font-size:0.82rem;color:var(--text2)">Already have an account? <a href="login.html">Login</a></p>
+    </div>
+  </div>
+
+  <div id="panelSuccess" style="display:none">
+    <div class="card text-center">
+      <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
+      <div class="card-title">Account Created!</div>
+      <p id="successMsg" style="color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem"></p>
+      <a href="login.html" class="btn btn-primary btn-full">Go to Login</a>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (Auth.isLoggedIn()) window.location.href = "dashboard.html";
+
+  let selectedRole = "user";
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById("roleUser").classList.toggle("active", role === "user");
+    document.getElementById("roleAdmin").classList.toggle("active", role === "admin");
+    document.getElementById("companyGroup").style.display = role === "admin" ? "block" : "none";
+  }
+
+  function checkStrength(val) {
+    const bar = document.getElementById("strengthBar");
+    if (!val) { bar.className = "password-strength"; return; }
+    const strong = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}/.test(val);
+    const medium = /(?=.*[a-zA-Z])(?=.*\d).{6,}/.test(val);
+    bar.className = "password-strength " + (strong ? "strength-strong" : medium ? "strength-medium" : "strength-weak");
+  }
+
+  async function doRegister() {
+    const name     = document.getElementById("regName").value.trim();
+    const email    = document.getElementById("regEmail").value.trim().toLowerCase();
+    const password = document.getElementById("regPassword").value;
+    const confirm  = document.getElementById("regConfirm").value;
+    const company  = document.getElementById("regCompany").value.trim();
+    UI.hideAlert("regAlert");
+
+    if (!name || !email || !password) return UI.showAlert("regAlert", "All fields are required");
+    if (password.length < 8) return UI.showAlert("regAlert", "Password must be at least 8 characters");
+    if (password !== confirm) return UI.showAlert("regAlert", "Passwords do not match");
+
+    const payload = { name, email, password, role: selectedRole };
+    if (selectedRole === "admin") payload.companyName = company;
+
+    UI.setLoading("btnRegister", true);
+    try {
+      await API.register(payload);
+      const msg = selectedRole === "admin"
+        ? "Your admin account is pending approval. You can login once verified by Super Admin."
+        : "Your account is ready! Please login to continue.";
+      document.getElementById("successMsg").textContent = msg;
+      showStep(3); // SKIP STEP 2 (OTP)
+    } catch (err) {
+      UI.showAlert("regAlert", err.message);
+    } finally {
+      UI.setLoading("btnRegister", false);
+    }
+  }
+
+  function showStep(n) {
+    document.getElementById("panelRegister").style.display = n === 1 ? "block" : "none";
+    document.getElementById("panelSuccess").style.display  = n === 3 ? "block" : "none";
+    document.getElementById("step1").className = "step " + (n > 1 ? "step-done" : "step-active");
+    document.getElementById("step3").className = "step " + (n === 3 ? "step-active" : "step-pending");
+  }
+</script>
+</body>
+</html>

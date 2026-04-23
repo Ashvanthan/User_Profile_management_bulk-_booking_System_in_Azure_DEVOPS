@@ -1,0 +1,268 @@
+<!--
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+    .auth-wrap { width: 100%; max-width: 420px; padding: 1.5rem; }
+    .auth-logo { text-align: center; margin-bottom: 2rem; }
+    .auth-logo h1 { font-size: 1.6rem; color: var(--accent); }
+    .auth-logo p { color: var(--text2); font-size: 0.85rem; margin-top: 4px; }
+    .auth-tabs { display: flex; background: var(--bg3); border-radius: 8px; padding: 3px; margin-bottom: 1.5rem; }
+    .auth-tab { flex: 1; text-align: center; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text2); transition: all 0.2s; }
+    .auth-tab.active { background: var(--accent); color: #fff; }
+    .forgot { font-size: 0.8rem; color: var(--text2); text-align: right; margin-top: -8px; margin-bottom: 12px; }
+    .forgot a { color: var(--accent); }
+    .divider-text { text-align: center; color: var(--text2); font-size: 0.8rem; margin: 1rem 0; position: relative; }
+    .divider-text::before, .divider-text::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: var(--border); }
+    .divider-text::before { left: 0; } .divider-text::after { right: 0; }
+    .register-link { text-align: center; font-size: 0.85rem; color: var(--text2); margin-top: 1rem; }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <h1>🎟 TicketBook</h1>
+    <p>Book your favorite movies with ease</p>
+  </div>
+
+  <div class="auth-tabs">
+    <div class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</div>
+    <div class="auth-tab" id="tabOtp" onclick="switchTab('otp')">Verify OTP</div>
+  </div>
+
+  <div id="panelLogin">
+    <div class="card">
+      <div id="loginAlert" class="alert"></div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <div class="forgot"><a href="#" onclick="forgotPassword()">Forgot password?</a></div>
+      <button class="btn btn-primary btn-full" id="btnLogin" data-label="Login" onclick="doLogin()">Login</button>
+      <div class="register-link mt-2">Don't have an account? <a href="register.html">Register here</a></div>
+    </div>
+  </div>
+
+  <div id="panelOtp" style="display:none">
+    <div class="card">
+      <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1rem">Enter the 6-digit OTP sent to your email after registration.</p>
+      <div id="otpAlert" class="alert"></div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="otpEmail" placeholder="you@email.com">
+      </div>
+      <div class="form-group">
+        <label>OTP Code</label>
+        <input type="text" id="otpCode" placeholder="6-digit code" maxlength="6" style="letter-spacing:6px;font-size:1.2rem;text-align:center">
+      </div>
+      <button class="btn btn-primary btn-full" id="btnOtp" data-label="Verify OTP" onclick="doVerifyOtp()">Verify OTP</button>
+      <div class="register-link mt-2">Already verified? <a href="#" onclick="switchTab('login')">Login</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  // Redirect if already logged in
+  if (Auth.isLoggedIn()) window.location.href = "dashboard.html";
+
+  function switchTab(tab) {
+    document.getElementById("panelLogin").style.display = tab === "login" ? "block" : "none";
+    document.getElementById("panelOtp").style.display   = tab === "otp"   ? "block" : "none";
+    document.getElementById("tabLogin").classList.toggle("active", tab === "login");
+    document.getElementById("tabOtp").classList.toggle("active", tab === "otp");
+  }
+
+  async function doLogin() {
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    UI.hideAlert("loginAlert");
+
+    if (!email || !password) return UI.showAlert("loginAlert", "Email and password are required");
+
+    UI.setLoading("btnLogin", true);
+    try {
+      const data = await API.login({ email, password });
+      Auth.save(data);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      UI.showAlert("loginAlert", err.message);
+    } finally {
+      UI.setLoading("btnLogin", false);
+    }
+  }
+
+  async function doVerifyOtp() {
+    const email = document.getElementById("otpEmail").value.trim();
+    const otp   = document.getElementById("otpCode").value.trim();
+    UI.hideAlert("otpAlert");
+
+    if (!email || !otp) return UI.showAlert("otpAlert", "Email and OTP are required");
+    if (otp.length !== 6) return UI.showAlert("otpAlert", "OTP must be 6 digits");
+
+    UI.setLoading("btnOtp", true);
+    try {
+      await API.verifyOtp({ email, otp });
+      UI.showAlert("otpAlert", "Email verified! You can now login.", "success");
+      setTimeout(() => switchTab("login"), 2000);
+    } catch (err) {
+      UI.showAlert("otpAlert", err.message);
+    } finally {
+      UI.setLoading("btnOtp", false);
+    }
+  }
+
+  function forgotPassword() {
+    alert("Password reset: Contact support or re-register with a new account. (Feature coming soon)");
+  }
+
+  // Allow Enter key
+  document.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      if (document.getElementById("panelLogin").style.display !== "none") doLogin();
+      else doVerifyOtp();
+    }
+  });
+</script>
+</body>
+</html>
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login — Ticket Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+    .auth-wrap { width: 100%; max-width: 420px; padding: 1.5rem; }
+    .auth-logo { text-align: center; margin-bottom: 2rem; }
+    .auth-logo h1 { font-size: 1.6rem; color: var(--accent); }
+    .auth-logo p { color: var(--text2); font-size: 0.85rem; margin-top: 4px; }
+    .auth-tabs { display: flex; background: var(--bg3); border-radius: 8px; padding: 3px; margin-bottom: 1.5rem; }
+    .auth-tab { flex: 1; text-align: center; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text2); transition: all 0.2s; }
+    .auth-tab.active { background: var(--accent); color: #fff; }
+    .forgot { font-size: 0.8rem; color: var(--text2); text-align: right; margin-top: -8px; margin-bottom: 12px; }
+    .forgot a { color: var(--accent); }
+    .divider-text { text-align: center; color: var(--text2); font-size: 0.8rem; margin: 1rem 0; position: relative; }
+    .divider-text::before, .divider-text::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: var(--border); }
+    .divider-text::before { left: 0; } .divider-text::after { right: 0; }
+    .register-link { text-align: center; font-size: 0.85rem; color: var(--text2); margin-top: 1rem; }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <h1>🎟 TicketBook</h1>
+    <p>Book your favorite movies with ease</p>
+  </div>
+
+  <div class="auth-tabs">
+    <div class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</div>
+    <div class="auth-tab" id="tabOtp" onclick="switchTab('otp')">Verify OTP</div>
+  </div>
+
+  <div id="panelLogin">
+    <div class="card">
+      <div id="loginAlert" class="alert"></div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <div class="forgot"><a href="#" onclick="forgotPassword()">Forgot password?</a></div>
+      <button class="btn btn-primary btn-full" id="btnLogin" data-label="Login" onclick="doLogin()">Login</button>
+      <div class="register-link mt-2">Don't have an account? <a href="register.html">Register here</a></div>
+    </div>
+  </div>
+
+  <div id="panelOtp" style="display:none">
+    <div class="card">
+      <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1rem">Verify your account status here.</p>
+      <div id="otpAlert" class="alert"></div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="otpEmail" placeholder="you@email.com">
+      </div>
+      <div class="form-group">
+        <label>OTP Code (Any 6 digits)</label>
+        <input type="text" id="otpCode" placeholder="6-digit code" maxlength="6" style="letter-spacing:6px;font-size:1.2rem;text-align:center">
+      </div>
+      <button class="btn btn-primary btn-full" id="btnOtp" data-label="Verify Status" onclick="doVerifyOtp()">Verify Status</button>
+      <div class="register-link mt-2">Already verified? <a href="#" onclick="switchTab('login')">Login</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (Auth.isLoggedIn()) window.location.href = "dashboard.html";
+
+  function switchTab(tab) {
+    document.getElementById("panelLogin").style.display = tab === "login" ? "block" : "none";
+    document.getElementById("panelOtp").style.display   = tab === "otp"   ? "block" : "none";
+    document.getElementById("tabLogin").classList.toggle("active", tab === "login");
+    document.getElementById("tabOtp").classList.toggle("active", tab === "otp");
+  }
+
+  async function doLogin() {
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    UI.hideAlert("loginAlert");
+
+    if (!email || !password) return UI.showAlert("loginAlert", "Email and password are required");
+
+    UI.setLoading("btnLogin", true);
+    try {
+      const data = await API.login({ email, password });
+      Auth.save(data);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      UI.showAlert("loginAlert", err.message);
+    } finally {
+      UI.setLoading("btnLogin", false);
+    }
+  }
+
+  async function doVerifyOtp() {
+    const email = document.getElementById("otpEmail").value.trim();
+    const otp   = document.getElementById("otpCode").value.trim();
+    UI.hideAlert("otpAlert");
+
+    if (!email) return UI.showAlert("otpAlert", "Email is required");
+    
+    UI.setLoading("btnOtp", true);
+    // Since registration is auto-verified, we just simulate success here
+    setTimeout(() => {
+      UI.showAlert("otpAlert", "Account is active! You can now login.", "success");
+      UI.setLoading("btnOtp", false);
+      setTimeout(() => switchTab("login"), 2000);
+    }, 1000);
+  }
+
+  function forgotPassword() {
+    alert("Password reset: Contact support or re-register. (Feature coming soon)");
+  }
+
+  document.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      if (document.getElementById("panelLogin").style.display !== "none") doLogin();
+      else doVerifyOtp();
+    }
+  });
+</script>
+</body>
+</html>
