@@ -3,7 +3,7 @@ trigger:
 
 variables:
   # 1. The name of the Service Connection you just created
-  azureServiceConnectionId: 'Azure-Conn'
+  azureServiceConnectionId: 'Ashvanthan'
   
   # 2. Your exact Function App name
   functionAppName: 'sc-ticket-backend'
