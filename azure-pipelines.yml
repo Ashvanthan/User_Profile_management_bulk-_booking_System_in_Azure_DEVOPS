@@ -1,13 +1,16 @@
 trigger:
 - main
 
+# ✅ Use your self-hosted agent
 pool:
-  vmImage: 'ubuntu-latest'
+  name: Default
 
 variables:
-  azureServiceConnectionId: 'Azure-Conn'   # 🔁 your RM connection
+  azureServiceConnectionId: 'Azure-Conn'   # make sure this is correct
   functionAppName: 'sc-ticket-backend'
-  workingDirectory: '$(System.DefaultWorkingDirectory)/folder1/backend'   # 🔁 CHANGE THIS
+
+  # ✅ IMPORTANT: correct folder path from your repo
+  workingDirectory: '$(System.DefaultWorkingDirectory)/ticket-booking-project/backend'
 
 steps:
 
